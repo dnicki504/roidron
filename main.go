@@ -14,7 +14,12 @@ const (
 )
 
 var (
-	cntr controller
+	cntr controller = controller{
+		controlByte1:       128,
+		controlByte2:       128,
+		controlTurn:        128,
+		controlAccelerator: 128,
+	}
 )
 
 type controller struct {
@@ -61,6 +66,11 @@ func main() {
 			fmt.Println("Выход")
 			ticker.Stop()
 			return
+		case keyboard.KeySpace:
+			cntr.controlByte1 = 128
+			cntr.controlByte2 = 128
+			cntr.controlTurn = 128
+			cntr.controlAccelerator = 128
 		}
 
 		switch char {
@@ -132,7 +142,7 @@ func processingPosition(ticker *time.Ticker, conn net.Conn) {
 				i += 128
 			}
 			if cntr.controlTurn >= 104 && cntr.controlTurn <= 152 {
-				cntr.controlTurn = 128
+				// cntr.controlTurn = 128
 			} else if cntr.controlTurn > 255 {
 				cntr.controlTurn = 255
 			} else if cntr.controlTurn < 1 {
@@ -152,11 +162,10 @@ func processingPosition(ticker *time.Ticker, conn net.Conn) {
 				cntr.controlByte2 = 1
 			}
 
-			if false {
+			fmt.Printf("tick %+v\n", cntr)
+
+			if true {
 				send(conn, []byte{1, 1}) // health check
-				fmt.Printf("tick %+v\n", cntr)
-			} else {
-				fmt.Printf("tick %+v\n", cntr)
 				send(conn, []byte{
 					3,
 					102,
@@ -166,7 +175,7 @@ func processingPosition(ticker *time.Ticker, conn net.Conn) {
 					byte(cntr.controlTurn),
 					byte(i),
 					byte(cntr.access(i)),
-					103,
+					byte(153),
 				})
 			}
 		}
