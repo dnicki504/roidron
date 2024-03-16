@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/eiannone/keyboard"
+	"github.com/go-vgo/robotgo"
 )
 
 const (
@@ -111,6 +112,9 @@ func main() {
 		case 'i':
 			cntr.isGyroCorrection = !cntr.isGyroCorrection
 		}
+
+		x, y := robotgo.Location()
+		fmt.Printf("Mouse position: X:%d, Y:%d\n", x, y)
 	}
 }
 
