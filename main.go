@@ -15,13 +15,15 @@ func main() {
 		buf := make([]byte, 20)
 		for true {
 			n, dst, _ := conn.ReadFrom(buf)
-			fmt.Println("serv recv", string(buf[:n]))
+			fmt.Println("serv recv s", string(buf[:n]))
+			fmt.Println("serv recv b", buf[:n])
 			fmt.Printf("serv dst %+v \n", dst)
 			// time.Sleep(10 * time.Second)
-			// conn.WriteTo(buf, dst)
+			dst, _ = net.ResolveUDPAddr("udp", "192.168.0.51:7088")
+			conn.WriteTo(buf, dst)
 		}
 	}()
-
+	fmt.Println("started")
 	for true {
 
 	}
