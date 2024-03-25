@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/eiannone/keyboard"
@@ -23,22 +25,39 @@ var (
 )
 
 type controller struct {
-	controlByte1       int
-	controlByte2       int
-	controlAccelerator int
-	controlTurn        int
-	isFastFly          bool
-	isFastDrop         bool
-	isEmergencyStop    bool
-	isCircleTurnEnd    bool
-	isNoHeadMode       bool
-	isFastReturn       bool
-	isUnLock           bool
-	isGyroCorrection   bool
+	controlByte1       int  // left/right
+	controlByte2       int  // forward/backward
+	controlAccelerator int  // accelerating up/down .. 90 .. 150 ..
+	controlTurn        int  // trurning
+	isFastFly          bool // up / arrow up / tacking off
+	isFastDrop         bool // down / arrow down / landing
+	isEmergencyStop    bool // stop / word stop / off the thrusters
+	isCircleTurnEnd    bool // roll / 360 with arrows in cycle /
+	isNoHeadMode       bool // vientiane model / dron with arrows icon / ? no one knwon what is it. i see only affect on lights
+	isFastReturn       bool //  - / - / did not find usage in origin
+	isUnLock           bool //  - / - / did not find usage in origin
+	isGyroCorrection   bool // correct / gear icon / ? correction on wind?
 }
 
 func (c *controller) access(i int) int {
 	return (((c.controlByte1 ^ c.controlByte2) ^ c.controlAccelerator) ^ c.controlTurn) ^ (i & 255)
+}
+
+func (c controller) String() string {
+	return fmt.Sprintf(`
+======
+QE acceleration %v .. 90 .. 150 .. 
+AD left/right %v
+WS forward/backward %v  
+ZC rotation %v
+=======
+1 isFastFly %v up / arrow up / tacking off
+2 isFastDrop %v down / arrow down / landing
+3 isEmergencyStop %v stop / word stop / off the thrusters
+4 isGyroCorrection %v correct / gear icon / ? correction on wind?
+=======`,
+		c.controlAccelerator, c.controlByte1, c.controlByte2, c.controlTurn,
+		c.isFastFly, c.isFastDrop, c.isEmergencyStop, c.isGyroCorrection)
 }
 
 func main() {
@@ -71,45 +90,53 @@ func main() {
 			cntr.controlByte2 = 128
 			cntr.controlTurn = 128
 			cntr.controlAccelerator = 128
+			cntr.isFastFly = false
+			cntr.isFastDrop = false
+			cntr.isEmergencyStop = false
+			cntr.isCircleTurnEnd = false
+			cntr.isNoHeadMode = false
+			cntr.isFastReturn = false
+			cntr.isUnLock = false
+			cntr.isGyroCorrection = false
 		}
 
 		switch char {
 		case 'a':
 			cntr.controlByte1 += 1
-		case 'z':
+		case 'd':
 			cntr.controlByte1 -= 1
 
-		case 's':
+		case 'w':
 			cntr.controlByte2 += 1
-		case 'x':
+		case 's':
 			cntr.controlByte2 -= 1
 
-		case 'd':
+		case 'q':
 			cntr.controlAccelerator += 1
-		case 'c':
+		case 'e':
 			cntr.controlAccelerator -= 1
 
-		case 'f':
+		case 'z':
 			cntr.controlTurn += 1
-		case 'v':
+		case 'c':
 			cntr.controlTurn -= 1
 
-		case 'q':
+		case '1':
 			cntr.isFastFly = !cntr.isFastFly
-		case 'w':
+		case '2':
 			cntr.isFastDrop = !cntr.isFastDrop
-		case 'e':
+		case '3':
 			cntr.isEmergencyStop = !cntr.isEmergencyStop
-		case 'r':
-			cntr.isCircleTurnEnd = !cntr.isCircleTurnEnd
-		case 't':
-			cntr.isNoHeadMode = !cntr.isNoHeadMode
-		case 'y':
-			cntr.isFastReturn = !cntr.isFastReturn
-		case 'u':
-			cntr.isUnLock = !cntr.isUnLock
-		case 'i':
+		case '4':
 			cntr.isGyroCorrection = !cntr.isGyroCorrection
+			// case 't':
+			// 	cntr.isCircleTurnEnd = !cntr.isCircleTurnEnd
+			// case 'y':
+			// 	cntr.isNoHeadMode = !cntr.isNoHeadMode
+			// case 'u':
+			// 	cntr.isFastReturn = !cntr.isFastReturn
+			// case 'i':
+			// 	cntr.isUnLock = !cntr.isUnLock
 		}
 	}
 }
@@ -141,6 +168,7 @@ func processingPosition(ticker *time.Ticker, conn net.Conn) {
 			if cntr.isGyroCorrection {
 				i += 128
 			}
+
 			if cntr.controlTurn >= 104 && cntr.controlTurn <= 152 {
 				// cntr.controlTurn = 128
 			} else if cntr.controlTurn > 255 {
@@ -162,7 +190,7 @@ func processingPosition(ticker *time.Ticker, conn net.Conn) {
 				cntr.controlByte2 = 1
 			}
 
-			fmt.Printf("tick %+v\n", cntr)
+			fmt.Printf("\n\n\ntick %v\n", cntr)
 
 			if true {
 				send(conn, []byte{1, 1}) // health check
@@ -191,19 +219,20 @@ func connection(proto, addr string) net.Conn {
 }
 
 func send(conn net.Conn, bts []byte) {
-	fmt.Println("clnt send", bts)
+	fmt.Printf("\n-> %v", bts)
 
-	i, err := conn.Write(bts)
+	_, err := conn.Write(bts)
 	if err != nil {
 		panic(fmt.Sprint("err:", err))
 	}
-	fmt.Println("i ", i)
-
 	buf := make([]byte, 20)
+
+	conn.SetReadDeadline(time.Now().Add(time.Second))
 	d, err := conn.Read(buf)
 	if err != nil {
-		panic(fmt.Sprint("err:", err))
+		if !errors.Is(err, os.ErrDeadlineExceeded) {
+			panic(fmt.Sprint("err:", err))
+		}
 	}
-	fmt.Println("clnt recv read", d)
-	fmt.Println("clnt recv buf ", buf, "\n", string(buf))
+	fmt.Printf(" <- %vb %v", d, buf)
 }
