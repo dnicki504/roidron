@@ -102,18 +102,18 @@ func main() {
 
 		switch char {
 		case 'a':
-			cntr.controlByte1 += 1
-		case 'd':
 			cntr.controlByte1 -= 1
+		case 'd':
+			cntr.controlByte1 += 1
 
 		case 'w':
 			cntr.controlByte2 += 1
 		case 's':
 			cntr.controlByte2 -= 1
 
-		case 'q':
+		case 'q': //up
 			cntr.controlAccelerator += 1
-		case 'e':
+		case 'e': //down
 			cntr.controlAccelerator -= 1
 
 		case 'z':
